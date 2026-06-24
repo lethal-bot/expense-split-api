@@ -9,6 +9,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.CascadeType;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,6 +27,9 @@ public class Expense {
     @Column(name = "expense_id")
     private Long expenseId;
 
+    @Column(name = "user_name", nullable = false)
+    private String name;
+
     @ManyToOne
     @JoinColumn(name = "expense_created_by", nullable = false)
     private User createdBy;
@@ -37,8 +42,10 @@ public class Expense {
 
     @ManyToOne
     @JoinColumn(name = "group_id", nullable = false)
+    @JsonIgnoreProperties({ "expenses", "members" })
     private Group group;
 
-    @OneToMany(mappedBy = "expense")
+    @OneToMany(mappedBy = "expense", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("expense")
     private List<ExpenseSplit> splits;
 }

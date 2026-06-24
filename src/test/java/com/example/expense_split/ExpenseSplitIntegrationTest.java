@@ -82,7 +82,7 @@ class ExpenseSplitIntegrationTest {
         split.setFriend(friend);
         split.setFriendApproveFlag("false");
         split.setAdminApproveFlag("false");
-        split.setIsActive(true);
+        split.setIsActive("true");
         split = expenseSplitRepository.save(split);
 
         // 5. Verify the details
