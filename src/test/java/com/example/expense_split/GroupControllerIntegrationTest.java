@@ -74,7 +74,10 @@ class GroupControllerIntegrationTest {
                 .getContentAsString();
 
         // 3. Deserialize response and assert fields
-        Group createdGroup = objectMapper.readValue(responseContent, Group.class);
+        java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent, java.util.Map.class);
+        assertNotNull(responseMap);
+        assertEquals("SUCCESS", responseMap.get("status"));
+        Group createdGroup = objectMapper.convertValue(responseMap.get("data"), Group.class);
         assertNotNull(createdGroup);
         assertNotNull(createdGroup.getGroupId());
         assertEquals("Family Budget", createdGroup.getName());
@@ -124,12 +127,15 @@ class GroupControllerIntegrationTest {
                 .getContentAsString();
 
         // 3. Deserialize list of groups
-        Group[] groups = objectMapper.readValue(responseContent, Group[].class);
+        java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent, java.util.Map.class);
+        assertNotNull(responseMap);
+        assertEquals("SUCCESS", responseMap.get("status"));
+        Group[] groups = objectMapper.convertValue(responseMap.get("data"), Group[].class);
         assertNotNull(groups);
         assertEquals(1, groups.length);
         assertEquals("Shared Budget", groups[0].getName());
-        assertEquals(1, groups[0].getMembers().size());
-        assertEquals(user.getUserId(), groups[0].getMembers().get(0).getUserId());
+        assertEquals(1, groups[0].getMemberCount());
+        assertNull(groups[0].getMembers());
 
         // Assert that expenses are NOT serialized (will be null due to @JsonIgnore)
         assertNull(groups[0].getExpenses());

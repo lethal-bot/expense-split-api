@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.expense_split.dto.ResponseTypeDto;
+
 @RestController
 @RequestMapping("/api/v1/expense")
 @RequiredArgsConstructor
@@ -20,11 +22,11 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping("/add-expense")
-    public ResponseEntity<Expense> addExpense(
+    public ResponseEntity<ResponseTypeDto<Expense>> addExpense(
             @RequestBody AddExpenseRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
         Expense createdExpense = expenseService.addExpense(request, currentUser);
-        return ResponseEntity.ok(createdExpense);
+        return ResponseEntity.ok(ResponseTypeDto.success("Expense added successfully", createdExpense));
     }
 }

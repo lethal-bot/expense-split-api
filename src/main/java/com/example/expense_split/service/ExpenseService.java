@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,18 +28,30 @@ public class ExpenseService {
 
     @Transactional
     public Expense addExpense(AddExpenseRequest request, User currentUser) {
-        // 1. Fetch creator user
-        User creator = userRepository.findById(currentUser.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
 
         // 2. Fetch Group
         Group group = groupRepository.findById(request.getGroupId())
                 .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + request.getGroupId()));
 
+        // fetch people who are not in the group
+
+        List<Long> usersInGroup = group.getMembers().stream().map(User::getUserId).collect(Collectors.toList());
+
+        List<Long> peopleNotPresentInGroup = request.getFriendIds().stream()
+                .filter(member -> !usersInGroup.contains(member))
+                .collect(Collectors.toList());
+
+        System.out.println(peopleNotPresentInGroup);
+
+        if (!peopleNotPresentInGroup.isEmpty()) {
+            throw new IllegalArgumentException("Some friends are not part of the group or groupId is incorrect");
+        }
+
         // 3. Create and Save Expense
         Expense expense = new Expense();
+
         expense.setName(request.getName());
-        expense.setCreatedBy(creator);
+        expense.setCreatedBy(currentUser);
         expense.setTotalExpenseAmount(request.getTotalExpenseAmount());
         expense.setDescriptionOfExpense(request.getDescriptionOfExpense());
         expense.setGroup(group);
@@ -49,19 +62,18 @@ public class ExpenseService {
         List<ExpenseSplit> splits = new ArrayList<>();
         if (request.getFriendIds() != null) {
             for (Long friendId : request.getFriendIds()) {
-                User friend = userRepository.findById(friendId)
-                        .orElseThrow(() -> new IllegalArgumentException("Friend user not found with ID: " + friendId));
-
                 ExpenseSplit split = new ExpenseSplit();
+                User friendProxy = userRepository.getReferenceById(friendId);
                 split.setExpense(expense);
-                split.setUser(creator);
-                split.setFriend(friend);
+                split.setUser(currentUser);
+                split.setFriend(friendProxy);
                 split.setFriendApproveFlag("false");
                 split.setAdminApproveFlag("false");
                 split.setIsActive(true);
-                splits.add(expenseSplitRepository.save(split));
+                splits.add(split);
             }
         }
+        expenseSplitRepository.saveAll(splits);
         expense.setSplits(splits);
 
         return expense;

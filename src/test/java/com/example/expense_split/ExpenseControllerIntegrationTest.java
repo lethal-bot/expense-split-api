@@ -90,6 +90,7 @@ class ExpenseControllerIntegrationTest {
         // 3. Perform request
         AddExpenseRequest request = new AddExpenseRequest(
                 group.getGroupId(),
+                "Taxi",
                 120L,
                 "Taxi ride",
                 List.of(friend.getUserId())
@@ -104,8 +105,10 @@ class ExpenseControllerIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        // 4. Asserts
-        Expense createdExpense = objectMapper.readValue(responseContent, Expense.class);
+        java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent, java.util.Map.class);
+        assertNotNull(responseMap);
+        assertEquals("SUCCESS", responseMap.get("status"));
+        Expense createdExpense = objectMapper.convertValue(responseMap.get("data"), Expense.class);
         assertNotNull(createdExpense);
         assertNotNull(createdExpense.getExpenseId());
         assertEquals(120L, createdExpense.getTotalExpenseAmount());
@@ -114,5 +117,51 @@ class ExpenseControllerIntegrationTest {
         assertEquals(friend.getUserId(), createdExpense.getSplits().get(0).getFriend().getUserId());
         assertEquals(creator.getUserId(), createdExpense.getSplits().get(0).getUser().getUserId());
         assertTrue(createdExpense.getSplits().get(0).getIsActive());
+    }
+
+    @Test
+    void testAddExpenseFriendNotGroupMemberThrowsException() throws Exception {
+        // 1. Create and save users
+        User creator = new User();
+        creator.setName("Creator User 2");
+        creator.setEmail("creator_exp2@example.com");
+        creator.setPassword("password");
+        creator.setIsActive("true");
+        creator.setGroups(new ArrayList<>());
+        creator = userRepository.save(creator);
+
+        User nonMemberFriend = new User();
+        nonMemberFriend.setName("Non Member");
+        nonMemberFriend.setEmail("nonmember@example.com");
+        nonMemberFriend.setPassword("password");
+        nonMemberFriend.setIsActive("true");
+        nonMemberFriend.setGroups(new ArrayList<>());
+        nonMemberFriend = userRepository.save(nonMemberFriend);
+
+        // 2. Create Group
+        Group group = new Group();
+        group.setName("Trip Group 2");
+        group.setAdminId(creator.getUserId());
+        group.setIsActive("true");
+        group.setMembers(new ArrayList<>(List.of(creator)));
+        group = groupRepository.save(group);
+
+        creator.getGroups().add(group);
+        userRepository.save(creator);
+
+        // 3. Perform request
+        AddExpenseRequest request = new AddExpenseRequest(
+                group.getGroupId(),
+                "Taxi",
+                120L,
+                "Taxi ride",
+                List.of(nonMemberFriend.getUserId())
+        );
+
+        mockMvc.perform(post("/api/v1/expense/add-expense")
+                        .with(user(creator))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -12,15 +12,19 @@ import jakarta.persistence.Table;
 import jakarta.persistence.CascadeType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
+
+import jakarta.persistence.FetchType;
 
 @Entity
 @Table(name = "expenses")
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Builder
 public class Expense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +34,7 @@ public class Expense {
     @Column(name = "user_name", nullable = false)
     private String name;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "expense_created_by", nullable = false)
     private User createdBy;
 
@@ -40,7 +44,7 @@ public class Expense {
     @Column(name = "description_of_expense")
     private String descriptionOfExpense;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
     @JsonIgnoreProperties({ "expenses", "members" })
     private Group group;

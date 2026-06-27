@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.expense_split.dto.ResponseTypeDto;
 import java.util.List;
 
 @RestController
@@ -23,17 +24,18 @@ public class GroupController {
     private final GroupService groupService;
 
     @PostMapping("/create-group")
-    public ResponseEntity<Group> createGroup(
+    public ResponseEntity<ResponseTypeDto<Group>> createGroup(
             @RequestBody CreateGroupRequest request,
             @AuthenticationPrincipal User currentUser) {
         Group createdGroup = groupService.createGroup(request, currentUser);
-        return ResponseEntity.ok(createdGroup);
+        return ResponseEntity.ok(ResponseTypeDto.success("Group created successfully", createdGroup));
     }
 
     @GetMapping("/my-groups")
-    public ResponseEntity<List<Group>> getMyGroups(
+    public ResponseEntity<ResponseTypeDto<List<Group>>> getMyGroups(
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(groupService.getMyGroups(currentUser));
+        List<Group> groups = groupService.getMyGroups(currentUser);
+        return ResponseEntity.ok(ResponseTypeDto.success("Groups retrieved successfully", groups));
     }
 }

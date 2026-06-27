@@ -1,0 +1,95 @@
+package com.example.expense_split.service;
+
+import com.example.expense_split.dto.RespondRequestDto;
+import com.example.expense_split.dto.SendRequestDto;
+import com.example.expense_split.model.Group;
+import com.example.expense_split.model.RequestStatus;
+import com.example.expense_split.model.User;
+import com.example.expense_split.model.UserRequest;
+import com.example.expense_split.model.UserRequestId;
+import com.example.expense_split.repo.GroupRepository;
+import com.example.expense_split.repo.UserRepository;
+import com.example.expense_split.repo.UserRequestRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
+
+@Service
+@RequiredArgsConstructor
+public class UserRequestService {
+
+    private final UserRequestRepository userRequestRepository;
+    private final UserRepository userRepository;
+    private final GroupRepository groupRepository;
+
+    @Transactional
+    public UserRequest sendJoiningRequest(SendRequestDto requestDto) {
+        User targetUser = userRepository.findByEmail(requestDto.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + requestDto.getEmail()));
+
+        Group group = groupRepository.findById(requestDto.getGroupId())
+                .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + requestDto.getGroupId()));
+
+        UserRequestId requestId = new UserRequestId(targetUser.getUserId(), group.getGroupId());
+
+        return userRequestRepository.findById(requestId)
+                .map(existingRequest -> {
+                    if (existingRequest.getStatus() == RequestStatus.REJECTED) {
+                        existingRequest.setStatus(RequestStatus.PENDING);
+                        return userRequestRepository.save(existingRequest);
+                    }
+                    throw new IllegalArgumentException("Request already exists with status: " + existingRequest.getStatus());
+                })
+                .orElseGet(() -> {
+                    UserRequest newRequest = new UserRequest();
+                    newRequest.setUser(targetUser);
+                    newRequest.setGroup(group);
+                    newRequest.setStatus(RequestStatus.PENDING);
+                    return userRequestRepository.save(newRequest);
+                });
+    }
+
+    @Transactional
+    public UserRequest respondToRequest(RespondRequestDto responseDto, User currentUser) {
+        if (responseDto.getStatus() != RequestStatus.ACCEPTED && responseDto.getStatus() != RequestStatus.REJECTED) {
+            throw new IllegalArgumentException("Invalid response status. Must be ACCEPTED or REJECTED.");
+        }
+
+        UserRequestId requestId = new UserRequestId(currentUser.getUserId(), responseDto.getGroupId());
+        UserRequest userRequest = userRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found for this group."));
+
+        if (userRequest.getStatus() != RequestStatus.PENDING) {
+            throw new IllegalArgumentException("Request is not in PENDING status. Current status: " + userRequest.getStatus());
+        }
+
+        userRequest.setStatus(responseDto.getStatus());
+        UserRequest savedRequest = userRequestRepository.save(userRequest);
+
+        if (responseDto.getStatus() == RequestStatus.ACCEPTED) {
+            User user = userRepository.findById(currentUser.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
+            Group group = groupRepository.findById(responseDto.getGroupId())
+                    .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + responseDto.getGroupId()));
+
+            if (user.getGroups() == null) {
+                user.setGroups(new ArrayList<>());
+            }
+            if (!user.getGroups().contains(group)) {
+                user.getGroups().add(group);
+                userRepository.save(user);
+            }
+
+            if (group.getMembers() == null) {
+                group.setMembers(new ArrayList<>());
+            }
+            if (!group.getMembers().contains(user)) {
+                group.getMembers().add(user);
+                groupRepository.save(group);
+            }
+        }
+
+        return savedRequest;
+    }
+}
