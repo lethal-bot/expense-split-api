@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -91,5 +92,9 @@ public class UserRequestService {
         }
 
         return savedRequest;
+    }
+
+    public List<UserRequest> getPendingRequests(User currentUser) {
+        return userRequestRepository.findByUserUserIdAndStatus(currentUser.getUserId(), RequestStatus.PENDING);
     }
 }

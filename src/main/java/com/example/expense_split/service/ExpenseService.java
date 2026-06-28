@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -60,7 +62,12 @@ public class ExpenseService {
 
         // 4. Create and Save splits
         List<ExpenseSplit> splits = new ArrayList<>();
-        if (request.getFriendIds() != null) {
+        if (request.getFriendIds() != null && !request.getFriendIds().isEmpty()) {
+            int totalPeople = request.getFriendIds().size();
+            BigDecimal contribution = BigDecimal.valueOf(request.getTotalExpenseAmount())
+                    .divide(BigDecimal.valueOf(totalPeople), 2, RoundingMode.HALF_UP);
+            double splitContribution = contribution.doubleValue();
+
             for (Long friendId : request.getFriendIds()) {
                 ExpenseSplit split = new ExpenseSplit();
                 User friendProxy = userRepository.getReferenceById(friendId);
@@ -70,6 +77,7 @@ public class ExpenseService {
                 split.setFriendApproveFlag("false");
                 split.setAdminApproveFlag("false");
                 split.setIsActive(true);
+                split.setExpenseContribution(splitContribution);
                 splits.add(split);
             }
         }

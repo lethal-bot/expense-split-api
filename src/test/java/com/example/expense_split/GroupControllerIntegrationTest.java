@@ -17,6 +17,10 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import javax.crypto.SecretKey;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -139,5 +143,50 @@ class GroupControllerIntegrationTest {
 
         // Assert that expenses are NOT serialized (will be null due to @JsonIgnore)
         assertNull(groups[0].getExpenses());
+    }
+
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode("MzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MDEyMzQ1Njc4OTA=");
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    @Test
+    void testCallEndpointWithExpiredToken() throws Exception {
+        // Create an expired token
+        String expiredToken = Jwts.builder()
+                .subject("member@example.com")
+                .issuedAt(new java.util.Date(System.currentTimeMillis() - 100000))
+                .expiration(new java.util.Date(System.currentTimeMillis() - 50000))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+
+        String responseContent = mockMvc.perform(get("/api/v1/group/my-groups")
+                        .header("Authorization", "Bearer " + expiredToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent, java.util.Map.class);
+        assertNotNull(responseMap);
+        assertEquals("ERROR", responseMap.get("status"));
+        assertEquals("Token expired", responseMap.get("message"));
+    }
+
+    @Test
+    void testCallEndpointWithInvalidToken() throws Exception {
+        String responseContent = mockMvc.perform(get("/api/v1/group/my-groups")
+                        .header("Authorization", "Bearer invalid_signature_value")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent, java.util.Map.class);
+        assertNotNull(responseMap);
+        assertEquals("ERROR", responseMap.get("status"));
+        assertEquals("Invalid token", responseMap.get("message"));
     }
 }

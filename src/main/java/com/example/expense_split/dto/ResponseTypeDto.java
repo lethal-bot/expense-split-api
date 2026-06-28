@@ -37,4 +37,14 @@ public class ResponseTypeDto<T> {
                 .build();
     }
 
+    public static <T> ResponseTypeDto<T> error(String message, T data, String error) {
+        return ResponseTypeDto.<T>builder()
+                .status("ERROR")
+                .message(message)
+                .data(data)
+                .error(error)
+                .timestamp(java.time.LocalDateTime.now().toString())
+                .build();
+    }
+
 }

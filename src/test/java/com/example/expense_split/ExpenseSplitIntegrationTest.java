@@ -83,11 +83,24 @@ class ExpenseSplitIntegrationTest {
         split.setFriendApproveFlag("false");
         split.setAdminApproveFlag("false");
         split.setIsActive(true);
+        split.setExpenseContribution(50.0);
         split = expenseSplitRepository.save(split);
 
         // 5. Verify the details
         assertNotNull(expense.getExpenseId());
         assertNotNull(split.getTransactionId());
+
+        // Verify auditing columns are set on save
+        assertNotNull(creator.getCreatedDate());
+        assertNotNull(creator.getModifiedDate());
+        assertNotNull(friend.getCreatedDate());
+        assertNotNull(friend.getModifiedDate());
+        assertNotNull(group.getCreatedDate());
+        assertNotNull(group.getModifiedDate());
+        assertNotNull(expense.getCreatedDate());
+        assertNotNull(expense.getModifiedDate());
+        assertNotNull(split.getCreatedDate());
+        assertNotNull(split.getModifiedDate());
 
         Expense savedExpense = expenseRepository.findById(expense.getExpenseId()).orElse(null);
         assertNotNull(savedExpense);
@@ -95,6 +108,8 @@ class ExpenseSplitIntegrationTest {
         assertEquals("Dinner split", savedExpense.getDescriptionOfExpense());
         assertEquals(creator.getUserId(), savedExpense.getCreatedBy().getUserId());
         assertEquals(group.getGroupId(), savedExpense.getGroup().getGroupId());
+        assertNotNull(savedExpense.getCreatedDate());
+        assertNotNull(savedExpense.getModifiedDate());
 
         ExpenseSplit savedSplit = expenseSplitRepository.findById(split.getTransactionId()).orElse(null);
         assertNotNull(savedSplit);
@@ -104,5 +119,8 @@ class ExpenseSplitIntegrationTest {
         assertEquals("false", savedSplit.getFriendApproveFlag());
         assertEquals("false", savedSplit.getAdminApproveFlag());
         assertEquals(true, savedSplit.getIsActive());
+        assertEquals(50.0, savedSplit.getExpenseContribution());
+        assertNotNull(savedSplit.getCreatedDate());
+        assertNotNull(savedSplit.getModifiedDate());
     }
 }

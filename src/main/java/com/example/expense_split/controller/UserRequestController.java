@@ -9,11 +9,13 @@ import com.example.expense_split.service.UserRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,5 +39,12 @@ public class UserRequestController {
         String actionStatus = responseDto.getStatus().toString().toLowerCase();
         return ResponseEntity.ok(
                 ResponseTypeDto.success("Request " + actionStatus + " successfully", Map.of("message", actionStatus)));
+    }
+
+    @GetMapping("/pending")
+    public ResponseEntity<ResponseTypeDto<List<UserRequest>>> getPendingRequests(
+            @AuthenticationPrincipal User currentUser) {
+        List<UserRequest> pendingRequests = userRequestService.getPendingRequests(currentUser);
+        return ResponseEntity.ok(ResponseTypeDto.success("Pending requests retrieved successfully", pendingRequests));
     }
 }

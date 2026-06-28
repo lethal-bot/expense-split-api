@@ -95,9 +95,9 @@ class UserRequestControllerIntegrationTest {
         SendRequestDto requestDto = new SendRequestDto(targetUser.getEmail(), group.getGroupId());
 
         String responseContent = mockMvc.perform(post("/api/v1/group-request/send-request")
-                        .with(user(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                .with(user(requester))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -128,9 +128,9 @@ class UserRequestControllerIntegrationTest {
         SendRequestDto requestDto = new SendRequestDto(targetUser.getEmail(), group.getGroupId());
 
         String responseContent = mockMvc.perform(post("/api/v1/group-request/send-request")
-                        .with(user(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                .with(user(requester))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -161,9 +161,9 @@ class UserRequestControllerIntegrationTest {
         SendRequestDto requestDto = new SendRequestDto(targetUser.getEmail(), group.getGroupId());
 
         mockMvc.perform(post("/api/v1/group-request/send-request")
-                        .with(user(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                .with(user(requester))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest()); // should return 400 bad request due to IllegalArgumentException
     }
 
@@ -172,9 +172,9 @@ class UserRequestControllerIntegrationTest {
         SendRequestDto requestDto = new SendRequestDto("nonexistent@example.com", group.getGroupId());
 
         mockMvc.perform(post("/api/v1/group-request/send-request")
-                        .with(user(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                .with(user(requester))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest()); // should return 400 bad request due to User not found
     }
 
@@ -190,9 +190,9 @@ class UserRequestControllerIntegrationTest {
         RespondRequestDto respondDto = new RespondRequestDto(group.getGroupId(), RequestStatus.ACCEPTED);
 
         String responseContent = mockMvc.perform(post("/api/v1/group-request/respond")
-                        .with(user(targetUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(respondDto)))
+                .with(user(targetUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(respondDto)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -231,9 +231,9 @@ class UserRequestControllerIntegrationTest {
         RespondRequestDto respondDto = new RespondRequestDto(group.getGroupId(), RequestStatus.REJECTED);
 
         String responseContent = mockMvc.perform(post("/api/v1/group-request/respond")
-                        .with(user(targetUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(respondDto)))
+                .with(user(targetUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(respondDto)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -268,9 +268,9 @@ class UserRequestControllerIntegrationTest {
         RespondRequestDto respondDto = new RespondRequestDto(group.getGroupId(), RequestStatus.REJECTED);
 
         mockMvc.perform(post("/api/v1/group-request/respond")
-                        .with(user(targetUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(respondDto)))
+                .with(user(targetUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(respondDto)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -279,9 +279,56 @@ class UserRequestControllerIntegrationTest {
         RespondRequestDto respondDto = new RespondRequestDto(group.getGroupId(), RequestStatus.ACCEPTED);
 
         mockMvc.perform(post("/api/v1/group-request/respond")
-                        .with(user(targetUser))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(respondDto)))
+                .with(user(targetUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(respondDto)))
                 .andExpect(status().isBadRequest());
     }
+
+    // @Test
+    // void testGetPendingRequests() throws Exception {
+    // // Pre-insert a pending request
+    // UserRequest pendingRequest = new UserRequest();
+    // pendingRequest.setUser(targetUser);
+    // pendingRequest.setGroup(group);
+    // pendingRequest.setStatus(RequestStatus.PENDING);
+    // userRequestRepository.save(pendingRequest);
+
+    // // Pre-insert an accepted request (should not be returned)
+    // Group group2 = new Group();
+    // group2.setName("Another Group");
+    // group2.setAdminId(requester.getUserId());
+    // group2.setIsActive("true");
+    // group2.setMembers(new ArrayList<>(java.util.List.of(requester)));
+    // group2 = groupRepository.save(group2);
+
+    // UserRequest acceptedRequest = new UserRequest();
+    // acceptedRequest.setUser(targetUser);
+    // acceptedRequest.setGroup(group2);
+    // acceptedRequest.setStatus(RequestStatus.ACCEPTED);
+    // userRequestRepository.save(acceptedRequest);
+
+    // String responseContent = mockMvc.perform(get("/api/v1/group-request/pending")
+    // .with(user(targetUser))
+    // .contentType(MediaType.APPLICATION_JSON))
+    // .andExpect(status().isOk())
+    // .andReturn()
+    // .getResponse()
+    // .getContentAsString();
+
+    // java.util.Map<?, ?> responseMap = objectMapper.readValue(responseContent,
+    // java.util.Map.class);
+    // assertNotNull(responseMap);
+    // assertEquals("SUCCESS", responseMap.get("status"));
+
+    // java.util.List<?> pendingList = (java.util.List<?>) responseMap.get("data");
+    // assertNotNull(pendingList);
+    // assertEquals(1, pendingList.size());
+
+    // java.util.Map<?, ?> requestObj = (java.util.Map<?, ?>) pendingList.get(0);
+    // java.util.Map<?, ?> groupMap = (java.util.Map<?, ?>) requestObj.get("group");
+    // assertEquals(group.getGroupId().intValue(), ((Number)
+    // groupMap.get("groupId")).intValue());
+    // assertEquals("PENDING", requestObj.get("status"));
+    // }
 }

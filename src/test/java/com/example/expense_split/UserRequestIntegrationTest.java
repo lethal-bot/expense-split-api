@@ -56,6 +56,9 @@ class UserRequestIntegrationTest {
         request.setStatus(RequestStatus.PENDING);
         request = userRequestRepository.save(request);
 
+        assertNotNull(request.getCreatedDate());
+        assertNotNull(request.getModifiedDate());
+
         // 4. Verify composite ID structure is generated and persisted correctly
         UserRequestId id = new UserRequestId(user.getUserId(), group.getGroupId());
         UserRequest savedRequest = userRequestRepository.findById(id).orElse(null);
@@ -64,6 +67,8 @@ class UserRequestIntegrationTest {
         assertEquals(user.getUserId(), savedRequest.getUser().getUserId());
         assertEquals(group.getGroupId(), savedRequest.getGroup().getGroupId());
         assertEquals(RequestStatus.PENDING, savedRequest.getStatus());
+        assertNotNull(savedRequest.getCreatedDate());
+        assertNotNull(savedRequest.getModifiedDate());
 
         // 5. Update Status
         savedRequest.setStatus(RequestStatus.ACCEPTED);
@@ -72,5 +77,7 @@ class UserRequestIntegrationTest {
         UserRequest updatedRequest = userRequestRepository.findById(id).orElse(null);
         assertNotNull(updatedRequest);
         assertEquals(RequestStatus.ACCEPTED, updatedRequest.getStatus());
+        assertNotNull(updatedRequest.getCreatedDate());
+        assertNotNull(updatedRequest.getModifiedDate());
     }
 }

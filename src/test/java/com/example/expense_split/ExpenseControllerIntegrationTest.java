@@ -117,6 +117,7 @@ class ExpenseControllerIntegrationTest {
         assertEquals(friend.getUserId(), createdExpense.getSplits().get(0).getFriend().getUserId());
         assertEquals(creator.getUserId(), createdExpense.getSplits().get(0).getUser().getUserId());
         assertTrue(createdExpense.getSplits().get(0).getIsActive());
+        assertEquals(60.0, createdExpense.getSplits().get(0).getExpenseContribution());
     }
 
     @Test
