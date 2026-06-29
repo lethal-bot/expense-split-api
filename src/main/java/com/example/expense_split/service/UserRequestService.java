@@ -10,6 +10,8 @@ import com.example.expense_split.model.UserRequestId;
 import com.example.expense_split.repo.GroupRepository;
 import com.example.expense_split.repo.UserRepository;
 import com.example.expense_split.repo.UserRequestRepository;
+import com.example.expense_split.repo.DueRepository;
+import com.example.expense_split.model.Due;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ public class UserRequestService {
     private final UserRequestRepository userRequestRepository;
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
+    private final DueRepository dueRepository;
 
     @Transactional
     public UserRequest sendJoiningRequest(SendRequestDto requestDto) {
@@ -86,6 +89,31 @@ public class UserRequestService {
                 group.setMembers(new ArrayList<>());
             }
             if (!group.getMembers().contains(user)) {
+                for (User member : group.getMembers()) {
+                    if (member.getUserId().equals(user.getUserId())) {
+                        continue;
+                    }
+                    User get;
+                    User give;
+                    if (user.getUserId() < member.getUserId()) {
+                        get = user;
+                        give = member;
+                    } else {
+                        get = member;
+                        give = user;
+                    }
+
+                    if (!dueRepository.existsByUserWhichWillGetAndUserWhichWillGiveAndGroup(get, give, group)) {
+                        Due due = Due.builder()
+                                .userWhichWillGet(get)
+                                .userWhichWillGive(give)
+                                .group(group)
+                                .amount(0.0)
+                                .active(true)
+                                .build();
+                        dueRepository.save(due);
+                    }
+                }
                 group.getMembers().add(user);
                 groupRepository.save(group);
             }

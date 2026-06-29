@@ -9,6 +9,8 @@ import com.example.expense_split.repo.ExpenseRepository;
 import com.example.expense_split.repo.ExpenseSplitRepository;
 import com.example.expense_split.repo.GroupRepository;
 import com.example.expense_split.repo.UserRepository;
+import com.example.expense_split.repo.DueRepository;
+import com.example.expense_split.model.Due;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class ExpenseService {
     private final ExpenseSplitRepository expenseSplitRepository;
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
+    private final DueRepository dueRepository;
 
     @Transactional
     public Expense addExpense(AddExpenseRequest request, User currentUser) {
@@ -83,6 +86,50 @@ public class ExpenseService {
         }
         expenseSplitRepository.saveAll(splits);
         expense.setSplits(splits);
+
+        // Update dues balances
+        if (request.getFriendIds() != null && !request.getFriendIds().isEmpty()) {
+            double splitContribution = BigDecimal.valueOf(request.getTotalExpenseAmount())
+                    .divide(BigDecimal.valueOf(request.getFriendIds().size()), 2, RoundingMode.HALF_UP)
+                    .doubleValue();
+
+            User creator = userRepository.findById(currentUser.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
+
+            for (Long friendId : request.getFriendIds()) {
+                User friend = userRepository.findById(friendId)
+                        .orElseThrow(() -> new IllegalArgumentException("Friend not found with ID: " + friendId));
+
+                User get;
+                User give;
+                if (creator.getUserId() < friend.getUserId()) {
+                    get = creator;
+                    give = friend;
+                } else {
+                    get = friend;
+                    give = creator;
+                }
+
+                Due due = dueRepository.findByUserWhichWillGetAndUserWhichWillGiveAndGroup(get, give, group)
+                        .orElseGet(() -> {
+                            Due newDue = Due.builder()
+                                    .userWhichWillGet(get)
+                                    .userWhichWillGive(give)
+                                    .group(group)
+                                    .amount(0.0)
+                                    .active(true)
+                                    .build();
+                            return dueRepository.save(newDue);
+                        });
+
+                if (creator.getUserId().equals(get.getUserId())) {
+                    due.setAmount(due.getAmount() + splitContribution);
+                } else {
+                    due.setAmount(due.getAmount() - splitContribution);
+                }
+                dueRepository.save(due);
+            }
+        }
 
         return expense;
     }
