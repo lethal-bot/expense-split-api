@@ -9,6 +9,7 @@ import com.example.expense_split.repo.ExpenseRepository;
 import com.example.expense_split.repo.ExpenseSplitRepository;
 import com.example.expense_split.repo.GroupRepository;
 import com.example.expense_split.repo.UserRepository;
+import com.example.expense_split.utililty.HelperMethods;
 import com.example.expense_split.repo.DueRepository;
 import com.example.expense_split.model.Due;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -67,9 +69,7 @@ public class ExpenseService {
         List<ExpenseSplit> splits = new ArrayList<>();
         if (request.getFriendIds() != null && !request.getFriendIds().isEmpty()) {
             int totalPeople = request.getFriendIds().size();
-            BigDecimal contribution = BigDecimal.valueOf(request.getTotalExpenseAmount())
-                    .divide(BigDecimal.valueOf(totalPeople), 2, RoundingMode.HALF_UP);
-            double splitContribution = contribution.doubleValue();
+            double splitContribution = HelperMethods.splitAmount(request.getTotalExpenseAmount(), totalPeople);
 
             for (Long friendId : request.getFriendIds()) {
                 ExpenseSplit split = new ExpenseSplit();
@@ -89,20 +89,29 @@ public class ExpenseService {
 
         // Update dues balances
         if (request.getFriendIds() != null && !request.getFriendIds().isEmpty()) {
-            double splitContribution = BigDecimal.valueOf(request.getTotalExpenseAmount())
-                    .divide(BigDecimal.valueOf(request.getFriendIds().size()), 2, RoundingMode.HALF_UP)
-                    .doubleValue();
+            double splitContribution = HelperMethods.splitAmount(request.getTotalExpenseAmount(),
+                    request.getFriendIds().size());
 
-            User creator = userRepository.findById(currentUser.getUserId())
-                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
+            User creator = userRepository.getReferenceById(currentUser.getUserId());
 
+            // 1. Batch fetch all existing dues involving the creator in this group
+            List<Due> existingDues = dueRepository.findByGroupAndUserInvolved(group, creator);
+
+            // 2. Build map of existing dues for O(1) in-memory lookup
+            Map<String, Due> dueMap = existingDues.stream().collect(Collectors.toMap(
+                    due -> due.getUserWhichWillGet().getUserId() + "-" + due.getUserWhichWillGive().getUserId(),
+                    due -> due
+            ));
+
+            List<Due> dueList = new ArrayList<>();
             for (Long friendId : request.getFriendIds()) {
-                User friend = userRepository.findById(friendId)
-                        .orElseThrow(() -> new IllegalArgumentException("Friend not found with ID: " + friendId));
+                User friend = userRepository.getReferenceById(friendId);
 
                 User get;
                 User give;
-                if (creator.getUserId() < friend.getUserId()) {
+                if (creator.getUserId().equals(friend.getUserId())) {
+                    continue;
+                } else if (creator.getUserId() < friend.getUserId()) {
                     get = creator;
                     give = friend;
                 } else {
@@ -110,25 +119,28 @@ public class ExpenseService {
                     give = creator;
                 }
 
-                Due due = dueRepository.findByUserWhichWillGetAndUserWhichWillGiveAndGroup(get, give, group)
-                        .orElseGet(() -> {
-                            Due newDue = Due.builder()
-                                    .userWhichWillGet(get)
-                                    .userWhichWillGive(give)
-                                    .group(group)
-                                    .amount(0.0)
-                                    .active(true)
-                                    .build();
-                            return dueRepository.save(newDue);
-                        });
+                String key = get.getUserId() + "-" + give.getUserId();
+                Due due = dueMap.get(key);
+                if (due == null) {
+                    due = Due.builder()
+                            .userWhichWillGet(get)
+                            .userWhichWillGive(give)
+                            .group(group)
+                            .amount(0.0)
+                            .active(true)
+                            .build();
+                    due = dueRepository.save(due);
+                    dueMap.put(key, due);
+                }
 
                 if (creator.getUserId().equals(get.getUserId())) {
                     due.setAmount(due.getAmount() + splitContribution);
                 } else {
                     due.setAmount(due.getAmount() - splitContribution);
                 }
-                dueRepository.save(due);
+                dueList.add(due);
             }
+            dueRepository.saveAll(dueList);
         }
 
         return expense;
