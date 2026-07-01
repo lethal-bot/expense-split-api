@@ -43,7 +43,8 @@ public class UserRequestService {
                         existingRequest.setStatus(RequestStatus.PENDING);
                         return userRequestRepository.save(existingRequest);
                     }
-                    throw new IllegalArgumentException("Request already exists with status: " + existingRequest.getStatus());
+                    throw new IllegalArgumentException(
+                            "Request already exists with status: " + existingRequest.getStatus());
                 })
                 .orElseGet(() -> {
                     UserRequest newRequest = new UserRequest();
@@ -56,6 +57,16 @@ public class UserRequestService {
 
     @Transactional
     public UserRequest respondToRequest(RespondRequestDto responseDto, User currentUser) {
+        // this api is for accepting the request from a group
+        // whats happening in this api
+        // checking that requet send is accepted or rejected
+        // userRequest fetching to check if it is already present or not <- db call 1
+        // saving the updated user request <- db call 2
+        // fetching the user to add the group <- db call 3
+        // fetching the group to add the user <- db call 4
+        // fetching the members to add in the due table <- db call 5
+        // adding the bulk combinations of users and group in due table <- db call 6
+
         if (responseDto.getStatus() != RequestStatus.ACCEPTED && responseDto.getStatus() != RequestStatus.REJECTED) {
             throw new IllegalArgumentException("Invalid response status. Must be ACCEPTED or REJECTED.");
         }
@@ -65,7 +76,8 @@ public class UserRequestService {
                 .orElseThrow(() -> new IllegalArgumentException("Request not found for this group."));
 
         if (userRequest.getStatus() != RequestStatus.PENDING) {
-            throw new IllegalArgumentException("Request is not in PENDING status. Current status: " + userRequest.getStatus());
+            throw new IllegalArgumentException(
+                    "Request is not in PENDING status. Current status: " + userRequest.getStatus());
         }
 
         userRequest.setStatus(responseDto.getStatus());
@@ -73,9 +85,11 @@ public class UserRequestService {
 
         if (responseDto.getStatus() == RequestStatus.ACCEPTED) {
             User user = userRepository.findById(currentUser.getUserId())
-                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
+                    .orElseThrow(
+                            () -> new IllegalArgumentException("User not found with ID: " + currentUser.getUserId()));
             Group group = groupRepository.findById(responseDto.getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + responseDto.getGroupId()));
+                    .orElseThrow(
+                            () -> new IllegalArgumentException("Group not found with ID: " + responseDto.getGroupId()));
 
             if (user.getGroups() == null) {
                 user.setGroups(new ArrayList<>());
@@ -88,6 +102,7 @@ public class UserRequestService {
             if (group.getMembers() == null) {
                 group.setMembers(new ArrayList<>());
             }
+            List<Due> dueList = new ArrayList<>();
             if (!group.getMembers().contains(user)) {
                 for (User member : group.getMembers()) {
                     if (member.getUserId().equals(user.getUserId())) {
@@ -103,16 +118,18 @@ public class UserRequestService {
                         give = user;
                     }
 
-                    if (!dueRepository.existsByUserWhichWillGetAndUserWhichWillGiveAndGroup(get, give, group)) {
-                        Due due = Due.builder()
-                                .userWhichWillGet(get)
-                                .userWhichWillGive(give)
-                                .group(group)
-                                .amount(0.0)
-                                .active(true)
-                                .build();
-                        dueRepository.save(due);
-                    }
+                    Due due = Due.builder()
+                            .userWhichWillGet(get)
+                            .userWhichWillGive(give)
+                            .group(group)
+                            .amount(0.0)
+                            .active(true)
+                            .build();
+
+                    dueList.add(due);
+                }
+                if (!dueList.isEmpty()) {
+                    dueRepository.saveAll(dueList);
                 }
                 group.getMembers().add(user);
                 groupRepository.save(group);

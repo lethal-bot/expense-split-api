@@ -100,8 +100,7 @@ public class ExpenseService {
             // 2. Build map of existing dues for O(1) in-memory lookup
             Map<String, Due> dueMap = existingDues.stream().collect(Collectors.toMap(
                     due -> due.getUserWhichWillGet().getUserId() + "-" + due.getUserWhichWillGive().getUserId(),
-                    due -> due
-            ));
+                    due -> due));
 
             List<Due> dueList = new ArrayList<>();
             for (Long friendId : request.getFriendIds()) {
@@ -121,17 +120,6 @@ public class ExpenseService {
 
                 String key = get.getUserId() + "-" + give.getUserId();
                 Due due = dueMap.get(key);
-                if (due == null) {
-                    due = Due.builder()
-                            .userWhichWillGet(get)
-                            .userWhichWillGive(give)
-                            .group(group)
-                            .amount(0.0)
-                            .active(true)
-                            .build();
-                    due = dueRepository.save(due);
-                    dueMap.put(key, due);
-                }
 
                 if (creator.getUserId().equals(get.getUserId())) {
                     due.setAmount(due.getAmount() + splitContribution);
